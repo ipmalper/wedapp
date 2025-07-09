@@ -63,6 +63,23 @@ namespace WebApplication1.Repositorio.Implementaciones
             return users;
         }
 
+        public bool BloquearUser(int usuarioId, string editorUserName, out string mensaje)
+        {
+
+            var result = _bd.QueryFirstOrDefault<dynamic>(
+                "sp_BloquearUsuarioPorEditor",
+                new { UsuarioId = usuarioId, EditorUserName = editorUserName },
+                commandType: CommandType.StoredProcedure);
+
+            if (result == null)
+            {
+                mensaje = "Error al ejecutar el procedimiento almacenado.";
+                return false;
+            }
+
+            mensaje = result.Mensaje;
+            return result.Exito == 1;
+        }
 
         public void BorrarUser(int id)
         {
@@ -75,6 +92,22 @@ namespace WebApplication1.Repositorio.Implementaciones
             _bd.Execute("spDesactivarUser", new { UserId = id }, commandType: CommandType.StoredProcedure);
         }
 
+        public bool DesbloquearUser(int usuarioId, string editorUserName, out string mensaje)
+        {
+            var result = _bd.QueryFirstOrDefault<dynamic>(
+        "sp_DesbloquearUsuario",
+        new { UsuarioId = usuarioId, EditorUserName = editorUserName },
+        commandType: CommandType.StoredProcedure);
+
+            if (result == null)
+            {
+                mensaje = "Error al ejecutar el procedimiento almacenado.";
+                return false;
+            }
+
+            mensaje = result.Mensaje;
+            return result.Exito == 1;
+        }
 
         public bool EmailExiste(string email)
         {

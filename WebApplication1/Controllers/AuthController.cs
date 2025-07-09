@@ -1,11 +1,14 @@
 ﻿using WebApplication1.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using WebApplication1.Repositorio.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using System.Diagnostics;
 
 namespace WebApplication1.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
+    [AllowAnonymous]
+    [ApiController]
     public class AuthController : ControllerBase
     {
         private readonly IRefreshTokensRepository _repo;
@@ -16,7 +19,8 @@ namespace WebApplication1.Controllers
 
 
         // POST: /Account/Register
-        [HttpPost("register")]
+        [HttpPost]
+        [Route("register")]
         public IActionResult Register([FromBody] RegisterDto register)
         {
             try
@@ -33,18 +37,22 @@ namespace WebApplication1.Controllers
 
 
         // POST: /Account/Login
-        [HttpPost("login")]
+        [HttpPost]
+        [Route("login")]
         public IActionResult Login([FromBody] LoginDto login)
         {
             var usuario = _repo.LoginUsuario(login.Password, login.UserName);
             if (usuario == null) return Unauthorized("Credenciales incorrectas");
+
+            string jwt = _repo.GenerarJwtToken(usuario);
 
             return Ok(new
             {
                 success = true,
                 data = new
                 {
-                    token = usuario.Token,
+                    token = jwt,
+                    refreshToken = usuario.Token,
                     expiresAt = usuario.ExpiresAt,
                     email = usuario.Email
                 }

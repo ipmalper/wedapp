@@ -20,5 +20,7 @@ namespace WebApplication1.Repositorio.Interfaces
 
 
         RefreshTokens? ObtenerPorToken(string token);
+        //generar token avanzado
+        string GenerarJwtToken(RefreshTokens usuario);
     }
 }

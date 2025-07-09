@@ -3,11 +3,15 @@ using WebApplication1.DTOs;
 using WebApplication1.Repositorio.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using WebApplication1.Models;
+using Microsoft.AspNetCore.Authorization;
+using WebApplication1.Repositorio.Implementaciones;
 
 namespace WebApplication1.Controllers
 {
-    [ApiController]
+    
     [Route("api/[controller]")]
+    [Authorize]
+    [ApiController]
     public class UsersController : ControllerBase
     {
         private readonly IUsersRepository _repo;
@@ -90,6 +94,52 @@ namespace WebApplication1.Controllers
 
             _repo.DesactivarUser(id);
             return Ok(new { mensaje = "Usuario desactivado o eliminado" });
+        }
+
+        [HttpPost("{id}/lock")]
+        [Authorize]
+        public IActionResult LockUser(int id)
+        {
+            var userName = User.Claims.FirstOrDefault(c => c.Type == "UserName")?.Value;
+
+
+            if (string.IsNullOrEmpty(userName))
+            {
+                return Unauthorized(new { message = "Usuario no identificado." });
+            }
+
+            string mensaje;
+            var exito = _repo.BloquearUser(id, userName, out mensaje);
+
+            if (!exito)
+            {
+                return Conflict(new { message = mensaje });
+            }
+
+            return Ok(new { message = mensaje });
+        }
+
+        [HttpPost("{id}/unlock")]
+        [Authorize]
+        public IActionResult UnlockUser(int id)
+        {
+            // Recuperar el nombre de usuario desde el token (claim)
+            var userName = User.Claims.FirstOrDefault(c => c.Type == "UserName")?.Value;
+
+            if (string.IsNullOrEmpty(userName))
+            {
+                return Unauthorized(new { message = "Usuario no identificado en el token." });
+            }
+
+            string mensaje;
+            var exito = _repo.DesbloquearUser(id, userName, out mensaje);
+
+            if (!exito)
+            {
+                return Conflict(new { message = mensaje });
+            }
+
+            return Ok(new { message = mensaje });
         }
     }
 }

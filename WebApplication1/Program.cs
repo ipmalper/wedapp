@@ -1,6 +1,10 @@
+using System.Text;
 using WebApplication1.Helpers;
 using WebApplication1.Repositorio.Implementaciones;
 using WebApplication1.Repositorio.Interfaces;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using WebApplication1.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,26 +15,49 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IUsersRepository, UsersRepository>();
 builder.Services.AddScoped<IRefreshTokensRepository, RefreshTokensRepository>();
-builder.Services.AddSession(options =>
-{
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // tiempo opcional
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-});
+builder.Services.AddHostedService<ClienteLockCleanerService>();
+
+//builder.Services.AddSession(options =>
+//{
+//    options.IdleTimeout = TimeSpan.FromMinutes(30); // tiempo opcional
+//    options.Cookie.HttpOnly = true;
+//    options.Cookie.IsEssential = true;
+//});
 builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins("https://sistema-n-front-prod-erhecchba3fza6cc.canadacentral-01.azurewebsites.net") // puerto de Angular
+        policy => policy.WithOrigins("http://localhost:4200") // puerto de Angular
                         .AllowAnyHeader()
-                        .AllowAnyMethod());
+                        .AllowAnyMethod())
+    ; 
 });
 
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration = "tu_cadena_conexion_redis";
-});
+//builder.Services.AddStackExchangeRedisCache(options =>
+//{
+   // options.Configuration = "tu_cadena_conexion_redis";
+//});
 builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;   
+    options.SaveToken=true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? string.Empty)
+        )
+    };
+});
 
 var app = builder.Build();
 
@@ -43,10 +70,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseSession();
-app.UseMiddleware<TokenValidationMiddleware>(); 
-app.UseCors("AllowFrontend");
+//app.UseSession();
 
+app.UseCors("AllowFrontend");
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

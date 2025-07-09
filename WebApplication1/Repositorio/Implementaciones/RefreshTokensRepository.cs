@@ -1,6 +1,11 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
 using System.Data;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using WebApplication1.DTOs;
 using WebApplication1.Models;
 using WebApplication1.Repositorio.Interfaces;
 
@@ -9,9 +14,11 @@ namespace WebApplication1.Repositorio.Implementaciones
     public class RefreshTokensRepository : IRefreshTokensRepository
     {
         private readonly IDbConnection _conexion;
+        private readonly IConfiguration _config;
         public RefreshTokensRepository(IConfiguration configuration)
         {
-            _conexion = new SqlConnection(configuration.GetConnectionString("ConexionSQLAzure"));
+            _config = configuration;
+            _conexion = new SqlConnection(_config.GetConnectionString("ConexionSQLAzure"));
         }
         public bool ExisteUsuario(string email, string userName)
         {
@@ -24,13 +31,34 @@ namespace WebApplication1.Repositorio.Implementaciones
             return count > 0;
         }
 
+        public string GenerarJwtToken(RefreshTokens usuario)
+        {
+            var claims = new[]
+         {
+            new Claim("UserId", usuario.Id.ToString()),
+            new Claim("UserName", usuario.UserName ?? string.Empty),
+            new Claim("Email", usuario.Email ?? string.Empty)
+        };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? string.Empty));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                claims:claims,
+                expires: DateTime.UtcNow.AddMinutes(60),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
         public RefreshTokens? LoginUsuario(string password, string userName)
         {
             // ✅ 1. Trae al usuario solo por su UserName
             var refreshToken = _conexion.QueryFirstOrDefault<RefreshTokens>(
-                "spLoginUsuario",
+                "spLoginUsuario", 
                 new { UserName = userName },
-                commandType: CommandType.StoredProcedure
+                commandType: CommandType.StoredProcedure 
             );
 
             // ❌ Si no se encontró el usuario
@@ -58,6 +86,8 @@ namespace WebApplication1.Repositorio.Implementaciones
             );
 
             return refreshToken;
+
+
         }
 
 

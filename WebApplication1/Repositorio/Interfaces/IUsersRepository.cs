@@ -16,6 +16,9 @@ namespace WebApplication1.Repositorio.Interfaces
         void BorrarUser(int id);
         void ActivarUser(int id);
         void DesactivarUser(int id);
+        bool BloquearUser(int usuarioId, string editorUserName, out string mensaje);
+        bool DesbloquearUser(int usuarioId, string editorUserName, out string mensaje);
+
     }
 }
 
